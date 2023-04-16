@@ -59,7 +59,7 @@ import org.springframework.util.StringUtils;
  * @author Sam Brannen
  * @since 3.2
  */
-public final class SpringFactoriesLoader {
+public final class SpringFactoriesLoader {//final类，不可以被继承，因而不能拓展
 
 	/**
 	 * The location to look for factories.
@@ -69,7 +69,8 @@ public final class SpringFactoriesLoader {
 
 
 	private static final Log logger = LogFactory.getLog(SpringFactoriesLoader.class);
-
+	// 自定义的用于存储工厂的缓存,key和value使用ReferenceType.SOFT或者是ReferenceType.WEAK，即软引用和弱引用.
+	// 使用软引用就意味着，在进行下一次GC时，如果即将发生OOM，GC就会把软引用指向的对象给回收掉。这一特性适合用作缓存处理。
 	static final Map<ClassLoader, Map<String, List<String>>> cache = new ConcurrentReferenceHashMap<>();
 
 
@@ -98,14 +99,17 @@ public final class SpringFactoriesLoader {
 		if (classLoaderToUse == null) {
 			classLoaderToUse = SpringFactoriesLoader.class.getClassLoader();
 		}
+		// 获取所有工厂实现类的名称集合
 		List<String> factoryImplementationNames = loadFactoryNames(factoryType, classLoaderToUse);
 		if (logger.isTraceEnabled()) {
 			logger.trace("Loaded [" + factoryType.getName() + "] names: " + factoryImplementationNames);
 		}
 		List<T> result = new ArrayList<>(factoryImplementationNames.size());
 		for (String factoryImplementationName : factoryImplementationNames) {
+			//实例化工厂实现类，并且添加进result集合中
 			result.add(instantiateFactory(factoryImplementationName, factoryType, classLoaderToUse));
 		}
+		// 通过AnnotationAwareOrderComparator#sort方法对工厂名称进行排序
 		AnnotationAwareOrderComparator.sort(result);
 		return result;
 	}
@@ -139,11 +143,17 @@ public final class SpringFactoriesLoader {
 		}
 
 		result = new HashMap<>();
-		try {
+		try {//加载META-INF/spring.factories文件中的配置类，然后封装成URL存储于Enumeration中
 			Enumeration<URL> urls = classLoader.getResources(FACTORIES_RESOURCE_LOCATION);
+			// 遍历urls，再将url封装成UrlResource对象
 			while (urls.hasMoreElements()) {
 				URL url = urls.nextElement();
 				UrlResource resource = new UrlResource(url);
+				/**
+				 *  通过PropertiesLoaderUtils属性加载器去加载spring.factories中的value值。
+				 *  这里的Properties是继承了HashTable的一个属性，key和value就对应着spring.factories文件里的key和value。
+				 *  在PropertiesLoaderUtils中，底层是通过IO流读取的文件数据，这里就不细说了。
+				 */
 				Properties properties = PropertiesLoaderUtils.loadProperties(resource);
 				for (Map.Entry<?, ?> entry : properties.entrySet()) {
 					String factoryTypeName = ((String) entry.getKey()).trim();
@@ -171,11 +181,13 @@ public final class SpringFactoriesLoader {
 	@SuppressWarnings("unchecked")
 	private static <T> T instantiateFactory(String factoryImplementationName, Class<T> factoryType, ClassLoader classLoader) {
 		try {
+			// 通过classUtils工具类获取工厂实现类的Class对象
 			Class<?> factoryImplementationClass = ClassUtils.forName(factoryImplementationName, classLoader);
 			if (!factoryType.isAssignableFrom(factoryImplementationClass)) {
 				throw new IllegalArgumentException(
 						"Class [" + factoryImplementationName + "] is not assignable to factory type [" + factoryType.getName() + "]");
 			}
+			// 通过反射工具创建工厂类实例对象
 			return (T) ReflectionUtils.accessibleConstructor(factoryImplementationClass).newInstance();
 		}
 		catch (Throwable ex) {

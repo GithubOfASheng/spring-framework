@@ -437,7 +437,7 @@ public @interface Configuration {
 	 * @see AnnotationBeanNameGenerator
 	 */
 	@AliasFor(annotation = Component.class)
-	String value() default "";
+	String value() default "";//存入spring IOC容器中的Bean的id
 
 	/**
 	 * Specify whether {@code @Bean} methods should get proxied in order to enforce
@@ -459,5 +459,14 @@ public @interface Configuration {
 	 * @since 5.2
 	 */
 	boolean proxyBeanMethods() default true;
+	/**
+	 * 从Spring 5.2版本开始加入到@Configuration注解，表示被@Configuration注解标注的配置类是否会被代理，
+	 * 并且在配置类中使用@Bean注解生成的Bean对象在IOC容器中是否是单例对象，取值为true或者false。
+	 * 当取值为true时，表示full（全局）模式，此模式下被@Configuration注解标注的配置类会被代理，
+	 * 在配置类中使用@Bean注解注入到IOC容器中的Bean对象是单例模式，无论调用多少次被@Bean注解标注的方法，返回的都是同一个Bean对象。
+	 * 当取值为false时，表示lite（轻量级）模式，此模式下被@Configuration注解标注的配置类不会被代理，
+	 * 在配置类中使用@Bean注解注入到IOC容器中的Bean对象不是单例模式，每次调用被@Bean注解标注的方法时，都会返回一个新的Bean对象。
+	 * 默认的取值为true。
+	 */
 
 }
